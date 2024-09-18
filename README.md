@@ -1,5 +1,4 @@
 # Robust-Multiple-Choice-Quiz-Game
-
 ## Description
 
 A command-line quiz game designed to test your knowledge with multiple-choice questions from various categories. The game fetches random questions using the Open Trivia Database API and provides a fallback to local questions if the API is unavailable.
