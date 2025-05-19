@@ -1,0 +1,439 @@
+
+{% extends "base.html" %}
+{% block title %}Quiz Details{% endblock %}
+{% block extra_head %}
+<style>
+    /* Quiz Details Page Styling */
+    .quiz-details-container {
+        max-width: 900px;
+        margin: 2rem auto;
+        background-color: #ffffff;
+        border-radius: 12px;
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.1);
+        padding: 2rem;
+    }
+
+    .loading {
+        text-align: center;
+        padding: 3rem 0;
+    }
+
+    .spinner {
+        border: 4px solid rgba(0, 0, 0, 0.1);
+        border-radius: 50%;
+        border-top: 4px solid #3498db;
+        width: 50px;
+        height: 50px;
+        margin: 0 auto 1rem;
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+
+    .hidden {
+        display: none;
+    }
+
+    .details-header {
+        margin-bottom: 2rem;
+    }
+
+    .details-header h2 {
+        color: #2c3e50;
+        font-size: 2rem;
+        margin-bottom: 1.5rem;
+        border-bottom: 2px solid #f1f1f1;
+        padding-bottom: 0.5rem;
+    }
+
+    .quiz-info {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+        background-color: #f8f9fa;
+        border-radius: 8px;
+        padding: 1.5rem;
+    }
+
+    .info-item {
+        display: flex;
+        align-items: center;
+    }
+
+    .label {
+        font-weight: 600;
+        color: #555;
+        margin-right: 0.5rem;
+        min-width: 100px;
+    }
+
+    .feedback-box {
+        background-color: #e8f4fd;
+        border-left: 4px solid #3498db;
+        padding: 1rem;
+        margin: 1rem 0;
+        border-radius: 4px;
+    }
+
+    .feedback-box p {
+        margin: 0;
+        color: #2980b9;
+        font-weight: 500;
+    }
+
+    .questions-review {
+        margin-top: 2rem;
+    }
+
+    .questions-review h3 {
+        color: #2c3e50;
+        font-size: 1.5rem;
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid #f1f1f1;
+    }
+
+    .question-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 2rem;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    }
+
+    .question-table th {
+        background-color: #f5f7fa;
+        color: #4a5568;
+        font-weight: 600;
+        text-align: left;
+        padding: 1rem;
+        border-bottom: 2px solid #e2e8f0;
+    }
+
+    .question-table td {
+        padding: 1rem;
+        border-bottom: 1px solid #e2e8f0;
+        vertical-align: top;
+    }
+
+    .question-number {
+        font-weight: 600;
+        min-width: 100px;
+    }
+
+    .question-content {
+        padding: 0.5rem 0;
+    }
+
+    .question-result {
+        display: inline-block;
+        padding: 0.25rem 0.75rem;
+        border-radius: 1rem;
+        font-size: 0.875rem;
+        font-weight: 600;
+    }
+
+    .question-result.correct {
+        background-color: #d4edda;
+        color: #155724;
+    }
+
+    .question-result.incorrect {
+        background-color: #f8d7da;
+        color: #721c24;
+    }
+
+    .options-list {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 0.5rem;
+        margin-top: 0.5rem;
+    }
+
+    .option-review {
+        padding: 0.5rem 0.75rem;
+        border-radius: 4px;
+        border: 1px solid #ddd;
+        position: relative;
+    }
+
+    .option-review.selected.correct {
+        background-color: #d4edda;
+        border-color: #c3e6cb;
+    }
+
+    .option-review.selected.incorrect {
+        background-color: #f8d7da;
+        border-color: #f5c6cb;
+    }
+
+    .option-review.correct:not(.selected) {
+        border-color: #c3e6cb;
+        border-width: 2px;
+    }
+
+    .option-status {
+        position: absolute;
+        right: 10px;
+        top: 50%;
+        transform: translateY(-50%);
+    }
+
+    .status-icon {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        text-align: center;
+        line-height: 20px;
+        border-radius: 50%;
+        font-weight: bold;
+    }
+
+    .status-icon.correct {
+        background-color: #28a745;
+        color: white;
+    }
+
+    .status-icon.incorrect {
+        background-color: #dc3545;
+        color: white;
+    }
+
+    .details-actions {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 2rem;
+        padding-top: 1rem;
+        border-top: 1px solid #edf2f7;
+    }
+
+    .btn {
+        display: inline-block;
+        text-decoration: none;
+        padding: 0.75rem 1.5rem;
+        border-radius: 6px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .btn-primary {
+        background-color: #3498db;
+        color: white;
+    }
+
+    .btn-primary:hover {
+        background-color: #2980b9;
+    }
+
+    .btn-secondary {
+        background-color: #f1f1f1;
+        color: #333;
+    }
+
+    .btn-secondary:hover {
+        background-color: #e1e1e1;
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+        .quiz-info {
+            grid-template-columns: 1fr;
+        }
+        
+        .quiz-details-container {
+            padding: 1rem;
+            margin: 1rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="quiz-details-container">
+    <div id="loading" class="loading">
+        <div class="spinner"></div>
+        <p>Loading quiz details...</p>
+    </div>
+    <div id="quiz-details" class="hidden">
+        <div class="details-header">
+            <h2>Quiz Details</h2>
+            <div class="quiz-info">
+                <div class="info-item">
+                    <span class="label">Date:</span>
+                    <span id="quiz-date">Loading...</span>
+                </div>
+                <div class="info-item">
+                    <span class="label">Category:</span>
+                    <span id="quiz-category">Loading...</span>
+                </div>
+                <div class="info-item">
+                    <span class="label">Final Score:</span>
+                    <span id="quiz-score">Loading...</span>
+                </div>
+                <div class="info-item">
+                    <span class="label">Result:</span>
+                    <span id="quiz-percentage">Loading...</span>
+                </div>
+            </div>
+            <div class="feedback-box">
+                <p id="quiz-feedback">Loading feedback...</p>
+            </div>
+        </div>
+        
+        <div class="questions-review">
+            <h3>Questions Review</h3>
+            <table class="question-table">
+                <thead>
+                    <tr>
+                        <th width="15%">Question #</th>
+                        <th width="15%">Result</th>
+                        <th>Details</th>
+                    </tr>
+                </thead>
+                <tbody id="questions-container">
+                    <!-- Questions will be loaded dynamically -->
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="details-actions">
+            <a href="/records" class="btn btn-secondary">Back to Records</a>
+            <a href="/" class="btn btn-primary">New Quiz</a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    const quizId = new URLSearchParams(window.location.search).get('quiz_id');
+    
+    document.addEventListener('DOMContentLoaded', function() {
+        // Load quiz details
+        if (quizId) {
+            loadQuizDetails(quizId);
+        } else {
+            alert('No quiz ID provided. Redirecting to records page...');
+            window.location.href = '/records';
+        }
+    });
+    
+    async function loadQuizDetails(quizId) {
+        try {
+            const response = await fetch(`/api/quizzes/${quizId}/details`);
+            if (!response.ok) {
+                throw new Error('Failed to load quiz details');
+            }
+            
+            const details = await response.json();
+            
+            // Hide loading and show content
+            document.getElementById('loading').classList.add('hidden');
+            document.getElementById('quiz-details').classList.remove('hidden');
+            
+            // Populate quiz info
+            document.getElementById('quiz-date').textContent = new Date(details.date_completed).toLocaleString();
+            document.getElementById('quiz-category').textContent = details.category_name;
+            document.getElementById('quiz-score').textContent = `${details.score}/${details.total_questions}`;
+            
+            // Format percentage with colored badge
+            const percentageElement = document.getElementById('quiz-percentage');
+            percentageElement.textContent = `${details.percentage.toFixed(1)}%`;
+            
+            // Add color class based on percentage
+            if (details.percentage >= 70) {
+                percentageElement.classList.add('correct');
+            } else {
+                percentageElement.classList.add('incorrect');
+            }
+            
+            document.getElementById('quiz-feedback').textContent = details.feedback;
+            
+            // Populate questions
+            populateQuestions(details.questions);
+        } catch (error) {
+            console.error('Error loading quiz details:', error);
+            alert('Failed to load quiz details. Redirecting to records page...');
+            window.location.href = '/records';
+        }
+    }
+    
+    function populateQuestions(questions) {
+        const container = document.getElementById('questions-container');
+        
+        questions.forEach((question, index) => {
+            const row = document.createElement('tr');
+            
+            // Question number cell
+            const numberCell = document.createElement('td');
+            numberCell.className = 'question-number';
+            numberCell.textContent = `Question ${index + 1}`;
+            
+            // Result cell
+            const resultCell = document.createElement('td');
+            const resultSpan = document.createElement('span');
+            resultSpan.className = `question-result ${question.is_correct ? 'correct' : 'incorrect'}`;
+            resultSpan.textContent = question.is_correct ? 'Correct' : 'Incorrect';
+            resultCell.appendChild(resultSpan);
+            
+            // Details cell
+            const detailsCell = document.createElement('td');
+            
+            // Question content
+            const content = document.createElement('div');
+            content.className = 'question-content';
+            content.innerHTML = `<p>${question.question}</p>`;
+            
+            // Create options list
+            const optionsList = document.createElement('div');
+            optionsList.className = 'options-list';
+            
+            question.options.forEach(option => {
+                const optionElement = document.createElement('div');
+                optionElement.className = 'option-review';
+                
+                // Add classes based on correctness and selection
+                if (option.is_selected && option.is_correct) {
+                    optionElement.classList.add('selected', 'correct');
+                } else if (option.is_selected && !option.is_correct) {
+                    optionElement.classList.add('selected', 'incorrect');
+                } else if (!option.is_selected && option.is_correct) {
+                    optionElement.classList.add('correct');
+                }
+                
+                optionElement.textContent = option.text;
+                
+                // Add status icon
+                const statusDiv = document.createElement('div');
+                statusDiv.className = 'option-status';
+                
+                if (option.is_selected || option.is_correct) {
+                    const statusIcon = document.createElement('span');
+                    statusIcon.className = `status-icon ${option.is_correct ? 'correct' : 'incorrect'}`;
+                    statusIcon.textContent = option.is_correct ? '✓' : '✗';
+                    statusDiv.appendChild(statusIcon);
+                }
+                
+                optionElement.appendChild(statusDiv);
+                optionsList.appendChild(optionElement);
+            });
+            
+            // Assemble details cell
+            detailsCell.appendChild(content);
+            detailsCell.appendChild(optionsList);
+            
+            // Add cells to row
+            row.appendChild(numberCell);
+            row.appendChild(resultCell);
+            row.appendChild(detailsCell);
+            
+            // Add row to table
+            container.appendChild(row);
+        });
+    }
+</script>
+{% endblock %}
