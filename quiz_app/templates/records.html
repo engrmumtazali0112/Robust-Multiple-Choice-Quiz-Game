@@ -1,0 +1,360 @@
+{% extends "base.html" %}
+
+{% block title %}Quiz Records - Quiz Master{% endblock %}
+
+{% block extra_head %}
+<style>
+    /* Records Page Specific Styles */
+    :root {
+        --primary-color: #8ac349;
+        --primary-dark: #76a93d;
+        --secondary-color: #5d69be;
+        --secondary-dark: #4a56a0;
+        --accent-color: #f9ca24;
+        --light-bg: #f8f9fa;
+        --dark-text: #333;
+        --light-text: #fff;
+        --border-radius: 8px;
+        --box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        --transition: all 0.3s ease;
+    }
+
+    /* Page Header */
+    .page-header {
+        margin-bottom: 2rem;
+        text-align: center;
+    }
+
+    .page-header h2 {
+        color: var(--primary-dark);
+        font-size: 2rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .page-header p {
+        color: #666;
+        font-size: 1.1rem;
+    }
+
+    /* Loading Spinner */
+    .loading {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem;
+    }
+
+    .spinner {
+        border: 4px solid rgba(0, 0, 0, 0.1);
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        border-left-color: var(--primary-color);
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+
+    /* Records Container */
+    .records-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+
+    .records-filters {
+        display: flex;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+
+    /* Dropdowns and Buttons */
+    select, .btn {
+        padding: 0.6rem 1rem;
+        border: 1px solid #ddd;
+        border-radius: var(--border-radius);
+        background-color: white;
+        font-size: 0.95rem;
+        outline: none;
+        transition: var(--transition);
+    }
+
+    select {
+        min-width: 180px;
+        cursor: pointer;
+    }
+
+    select:focus {
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 2px rgba(138, 195, 73, 0.2);
+    }
+
+    .btn {
+        cursor: pointer;
+        font-weight: 500;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .btn-primary {
+        background-color: var(--secondary-color);
+        color: white;
+        border-color: var(--secondary-color);
+    }
+
+    .btn-primary:hover {
+        background-color: var(--secondary-dark);
+        border-color: var(--secondary-dark);
+    }
+
+    .btn-secondary {
+        background-color: var(--accent-color);
+        color: var(--dark-text);
+        border-color: var(--accent-color);
+    }
+
+    .btn-secondary:hover {
+        background-color: #e0b820;
+        border-color: #e0b820;
+    }
+
+    .btn-small {
+        padding: 0.4rem 0.8rem;
+        font-size: 0.85rem;
+    }
+
+    /* Records Table */
+    .records-table-container {
+        overflow-x: auto;
+        background-color: white;
+        border-radius: var(--border-radius);
+        box-shadow: var(--box-shadow);
+    }
+
+    .records-table {
+        width: 100%;
+        border-collapse: collapse;
+        table-layout: fixed;
+    }
+
+    .records-table th, .records-table td {
+        padding: 1rem;
+        text-align: left;
+        border-bottom: 1px solid #eee;
+    }
+
+    .records-table th {
+        background-color: #f8f9fa;
+        font-weight: 600;
+        color: #555;
+    }
+
+    .records-table tr:last-child td {
+        border-bottom: none;
+    }
+
+    .records-table tr:hover {
+        background-color: #f5f8ff;
+    }
+
+    /* Responsive column widths */
+    .records-table th:nth-child(1), .records-table td:nth-child(1) { width: 20%; } /* Date */
+    .records-table th:nth-child(2), .records-table td:nth-child(2) { width: 20%; } /* Category */
+    .records-table th:nth-child(3), .records-table td:nth-child(3) { width: 12%; } /* Questions */
+    .records-table th:nth-child(4), .records-table td:nth-child(4) { width: 12%; } /* Score */
+    .records-table th:nth-child(5), .records-table td:nth-child(5) { width: 16%; } /* Percentage */
+    .records-table th:nth-child(6), .records-table td:nth-child(6) { width: 20%; } /* Actions */
+
+    /* Score Indicators */
+    .score-high {
+        color: #28a745;
+        font-weight: 500;
+    }
+
+    .score-medium {
+        color: #fd7e14;
+        font-weight: 500;
+    }
+
+    .score-low {
+        color: #dc3545;
+        font-weight: 500;
+    }
+
+    /* No Records Message */
+    #no-records {
+        text-align: center;
+        padding: 3rem 1rem;
+        background-color: white;
+        border-radius: var(--border-radius);
+        box-shadow: var(--box-shadow);
+    }
+
+    #no-records p {
+        color: #666;
+        margin-bottom: 1.5rem;
+        font-size: 1.1rem;
+    }
+
+    /* Utility Classes */
+    .hidden {
+        display: none !important;
+    }
+
+    /* Responsive Adjustments */
+    @media (max-width: 768px) {
+        .records-header {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+        
+        .records-filters {
+            width: 100%;
+        }
+        
+        select {
+            width: 100%;
+            min-width: auto;
+        }
+        
+        .btn {
+            width: 100%;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="page-header">
+    <h2>Quiz Records</h2>
+    <p>View your quiz history and performance.</p>
+</section>
+
+<div id="loading" class="loading">
+    <div class="spinner"></div>
+    <p>Loading records...</p>
+</div>
+
+<div id="records-container" class="hidden">
+    <div class="records-header">
+        <div class="records-filters">
+            <!-- Dynamic Category Dropdown -->
+            <select id="category-filter">
+                <option value="all">All Categories</option>
+                {% for category, id in categories.items() %}
+                    <option value="{{ id }}">{{ category }}</option>
+                {% endfor %}
+            </select>
+            <select id="score-filter">
+                <option value="all">All Scores</option>
+                <option value="high">High Scores (≥ 70%)</option>
+                <option value="medium">Medium Scores (50-69%)</option>
+                <option value="low">Low Scores (< 50%)</option>
+            </select>
+        </div>
+        <button id="clear-filters" class="btn btn-secondary">Clear Filters</button>
+    </div>
+
+    <!-- Records Table -->
+    <div class="records-table-container">
+        <table class="records-table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Category</th>
+                    <th>Questions</th>
+                    <th>Score</th>
+                    <th>Percentage</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="records-table-body">
+                {% for record in quiz_records %}
+                <tr>
+                    <td>{{ record.date_completed }}</td>
+                    <td>{{ categories_by_id.get(record.category, "Unknown") }}</td>
+                    <td>{{ record.num_questions }}</td> 
+                    <td>{{ record.score }}</td>
+                    <td class="{{ 'score-high' if record.percentage >= 70 else 'score-medium' if record.percentage >= 50 else 'score-low' }}">
+                        {{ record.percentage }}%
+                    </td>
+                    <td>
+                        <a href="/quiz-details?quiz_id={{ record.quiz_id }}" class="btn btn-small btn-primary">Details</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    document.getElementById('loading').classList.add('hidden');
+    document.getElementById('records-container').classList.remove('hidden');
+
+    // Adding score color classes based on percentage
+    document.querySelectorAll('#records-table-body tr').forEach(row => {
+        const percentCell = row.querySelector('td:nth-child(5)');
+        const percent = parseFloat(percentCell.textContent);
+        
+        if (percent >= 70) {
+            percentCell.classList.add('score-high');
+        } else if (percent >= 50) {
+            percentCell.classList.add('score-medium');
+        } else {
+            percentCell.classList.add('score-low');
+        }
+    });
+
+    // Filter functionality
+    document.getElementById('category-filter').addEventListener('change', filterRecords);
+    document.getElementById('score-filter').addEventListener('change', filterRecords);
+    document.getElementById('clear-filters').addEventListener('click', clearFilters);
+
+    function filterRecords() {
+        const categoryFilter = document.getElementById('category-filter').value;
+        const scoreFilter = document.getElementById('score-filter').value;
+        
+        document.querySelectorAll('#records-table-body tr').forEach(row => {
+            let showRow = true;
+            
+            // Category filtering
+            if (categoryFilter !== 'all') {
+                const categoryCell = row.querySelector('td:nth-child(2)').textContent;
+                if (categoryFilter !== categoryCell) showRow = false;
+            }
+            
+            // Score filtering
+            if (scoreFilter !== 'all') {
+                const percentCell = row.querySelector('td:nth-child(5)');
+                const percent = parseFloat(percentCell.textContent);
+                
+                if (scoreFilter === 'high' && percent < 70) showRow = false;
+                if (scoreFilter === 'medium' && (percent < 50 || percent >= 70)) showRow = false;
+                if (scoreFilter === 'low' && percent >= 50) showRow = false;
+            }
+            
+            row.style.display = showRow ? '' : 'none';
+        });
+    }
+
+    function clearFilters() {
+        document.getElementById('category-filter').value = 'all';
+        document.getElementById('score-filter').value = 'all';
+        
+        document.querySelectorAll('#records-table-body tr').forEach(row => {
+            row.style.display = '';
+        });
+    }
+</script>
+{% endblock %}
