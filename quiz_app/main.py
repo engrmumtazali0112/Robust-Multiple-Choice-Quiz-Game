@@ -33,5 +33,24 @@ async def quiz_page(request: Request, quiz_id: Optional[str] = None):
         return RedirectResponse(url="/")
     return templates.TemplateResponse("quiz.html", {"request": request, "quiz_id": quiz_id})
 
+@app.get("/records")
+async def records(request: Request):
+    quiz_records = QuizService.get_quiz_records()
+    categories = QuizService.get_categories()
+    
+    # Create an inverted dictionary for easy lookup (id -> name)
+    categories_by_id = {id: name for name, id in categories.items()}
+    
+    return templates.TemplateResponse(
+        "records.html", 
+        {"request": request, "quiz_records": quiz_records, "categories": categories, "categories_by_id": categories_by_id}
+    )
+@app.get("/quiz-details", response_class=HTMLResponse)
+async def quiz_details(request: Request, quiz_id: Optional[str] = None):
+    """Render the quiz details page"""
+    if not quiz_id:
+        return RedirectResponse(url="/records")
+    return templates.TemplateResponse("quiz_details.html", {"request": request, "quiz_id": quiz_id})
+
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
