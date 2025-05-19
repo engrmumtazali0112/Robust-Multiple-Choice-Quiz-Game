@@ -1,0 +1,245 @@
+{% extends "base.html" %}
+
+{% block title %}Quiz Game - Playing{% endblock %}
+
+{% block content %}
+<div class="quiz-container">
+    <div id="loading" class="loading">
+        <div class="spinner"></div>
+        <p>Loading quiz...</p>
+    </div>
+    
+    <div id="quiz-content" class="hidden">
+        <div class="quiz-header">
+            <div class="progress-container">
+                <div id="progress-bar" class="progress-bar"></div>
+            </div>
+            <div class="progress-text">
+                Question <span id="current-question">1</span>/<span id="total-questions">10</span>
+            </div>
+            <div class="score">
+                Score: <span id="current-score">0</span>
+            </div>
+        </div>
+        
+        <div class="question-container">
+            <h2 id="question-text">Question text will appear here...</h2>
+            
+            <div id="options-container" class="options-container">
+                <!-- Options will be added dynamically -->
+            </div>
+            
+            <div id="feedback" class="feedback hidden">
+                <div id="feedback-icon" class="feedback-icon"></div>
+                <p id="feedback-text">Feedback text will appear here...</p>
+                <button id="next-button" class="btn btn-primary">Next Question</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="results" class="results hidden">
+        <h2>Quiz Complete!</h2>
+        <div class="result-summary">
+            <p>Your score: <span id="final-score">0</span>/<span id="final-total">10</span></p>
+            <div id="result-percentage" class="result-percentage">0%</div>
+        </div>
+        <p id="feedback-message">Feedback will appear here...</p>
+        <div class="result-actions">
+            <a href="/" class="btn btn-primary">New Quiz</a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    // Quiz state variables
+    let quiz = null;
+    let currentQuestionIndex = 0;
+    let quizId = '{{ quiz_id }}';
+    
+    document.addEventListener('DOMContentLoaded', function() {
+        // Load the quiz
+        loadQuiz();
+        
+        // Add event listener for the next button
+        document.getElementById('next-button').addEventListener('click', showNextQuestion);
+    });
+    
+    async function loadQuiz() {
+        try {
+            const response = await fetch(`/api/quizzes/${quizId}`);
+            if (!response.ok) {
+                throw new Error('Failed to load quiz');
+            }
+            
+            quiz = await response.json();
+            
+            // Update UI with quiz data
+            document.getElementById('total-questions').textContent = quiz.num_questions;
+            document.getElementById('current-score').textContent = quiz.current_score;
+            
+            // Show first question
+            showQuestion(0);
+            
+            // Hide loading and show content
+            document.getElementById('loading').classList.add('hidden');
+            document.getElementById('quiz-content').classList.remove('hidden');
+        } catch (error) {
+            console.error('Error loading quiz:', error);
+            alert('Failed to load quiz. Redirecting to home...');
+            window.location.href = '/';
+        }
+    }
+    
+    function showQuestion(index) {
+        if (!quiz || index >= quiz.questions.length) {
+            return;
+        }
+        
+        const question = quiz.questions[index];
+        currentQuestionIndex = index;
+        
+        // Update question counter
+        document.getElementById('current-question').textContent = index + 1;
+        
+        // Update progress bar
+        const progressPercentage = ((index + 1) / quiz.num_questions) * 100;
+        document.getElementById('progress-bar').style.width = `${progressPercentage}%`;
+        
+        // Set question text
+        document.getElementById('question-text').textContent = question.question;
+        
+        // Clear previous options
+        const optionsContainer = document.getElementById('options-container');
+        optionsContainer.innerHTML = '';
+        
+        // Add options
+        question.options.forEach(option => {
+            const optionElement = document.createElement('div');
+            optionElement.className = 'option';
+            optionElement.dataset.optionId = option.id;
+            optionElement.textContent = option.text;
+            
+            // Add click event for option selection
+            optionElement.addEventListener('click', () => selectOption(option.id));
+            
+            optionsContainer.appendChild(optionElement);
+        });
+        
+        // Hide feedback section
+        document.getElementById('feedback').classList.add('hidden');
+    }
+    
+    async function selectOption(optionId) {
+        // Prevent selecting multiple times
+        if (document.querySelector('.option.selected')) {
+            return;
+        }
+        
+        const question = quiz.questions[currentQuestionIndex];
+        
+        // Highlight selected option
+        const options = document.querySelectorAll('.option');
+        options.forEach(option => {
+            if (option.dataset.optionId === optionId) {
+                option.classList.add('selected');
+            }
+        });
+        
+        try {
+            // Submit answer to API
+            const response = await fetch(`/api/quizzes/${quizId}/answer`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    question_id: question.id,
+                    selected_option_id: optionId
+                })
+            });
+            
+            if (!response.ok) {
+                throw new Error('Failed to submit answer');
+            }
+            
+            const result = await response.json();
+            
+            // Mark option as correct/incorrect
+            options.forEach(option => {
+                if (option.dataset.optionId === optionId) {
+                    if (result.is_correct) {
+                        option.classList.add('correct');
+                    } else {
+                        option.classList.add('incorrect');
+                    }
+                }
+                
+                // If incorrect, highlight the correct option
+                if (!result.is_correct && option.textContent === result.correct_answer) {
+                    option.classList.add('correct');
+                }
+            });
+            
+            // Update score if correct
+            if (result.is_correct) {
+                document.getElementById('current-score').textContent = parseInt(document.getElementById('current-score').textContent) + 1;
+            }
+            
+            // Show feedback
+            const feedbackEl = document.getElementById('feedback');
+            const feedbackIconEl = document.getElementById('feedback-icon');
+            const feedbackTextEl = document.getElementById('feedback-text');
+            
+            feedbackIconEl.className = 'feedback-icon';
+            feedbackIconEl.classList.add(result.is_correct ? 'correct' : 'incorrect');
+            feedbackTextEl.textContent = result.is_correct ? 'Correct! Good job!' : `Wrong! The correct answer was: ${result.correct_answer}`;
+            
+            feedbackEl.classList.remove('hidden');
+            
+            // If last question, change button to show results
+            if (currentQuestionIndex === quiz.questions.length - 1) {
+                document.getElementById('next-button').textContent = 'Show Results';
+            }
+        } catch (error) {
+            console.error('Error submitting answer:', error);
+            alert('Failed to submit answer. Please try again.');
+        }
+    }
+    
+    async function showNextQuestion() {
+        if (currentQuestionIndex < quiz.questions.length - 1) {
+            // Show next question
+            showQuestion(currentQuestionIndex + 1);
+        } else {
+            // Show results
+            await showResults();
+        }
+    }
+    
+    async function showResults() {
+        try {
+            const response = await fetch(`/api/quizzes/${quizId}/result`);
+            if (!response.ok) {
+                throw new Error('Failed to get quiz results');
+            }
+            
+            const result = await response.json();
+            
+            // Update UI with results
+            document.getElementById('final-score').textContent = result.score;
+            document.getElementById('final-total').textContent = result.total_questions;
+            document.getElementById('result-percentage').textContent = `${Math.round(result.percentage)}%`;
+            document.getElementById('feedback-message').textContent = result.feedback;
+            
+            // Hide quiz content and show results
+            document.getElementById('quiz-content').classList.add('hidden');
+            document.getElementById('results').classList.remove('hidden');
+        } catch (error) {
+            console.error('Error getting quiz results:', error);
+            alert('Failed to load quiz results. Please try again.');
+        }
+    }
+</script>
+{% endblock %}

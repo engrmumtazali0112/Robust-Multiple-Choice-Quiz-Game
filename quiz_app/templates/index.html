@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+
+{% block title %}Quiz Game - Home{% endblock %}
+
+{% block content %}
+<section class="hero">
+    <h2>Welcome to Quiz Master!</h2>
+    <p>Test your knowledge with our multiple-choice quiz game.</p>
+</section>
+
+<section class="quiz-setup">
+    <h3>Create a New Quiz</h3>
+    <div id="loading" class="hidden">
+        <div class="spinner"></div>
+        <p>Loading quiz...</p>
+    </div>
+    
+    <form id="quizSetupForm">
+        <div class="form-group">
+            <label for="numQuestions">Number of Questions:</label>
+            <input type="number" id="numQuestions" name="numQuestions" min="1" max="20" value="10">
+        </div>
+        
+        <div class="form-group">
+            <label for="category">Category:</label>
+            <select id="category" name="category">
+                <!-- Categories will be loaded dynamically via JavaScript -->
+                <option value="9">Loading categories...</option>
+            </select>
+        </div>
+        
+        <button type="submit" class="btn btn-primary">Start Quiz</button>
+    </form>
+</section>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Load categories
+        fetch('/api/categories')
+            .then(response => response.json())
+            .then(categories => {
+                const categorySelect = document.getElementById('category');
+                categorySelect.innerHTML = ''; // Clear the loading option
+                
+                // Add each category to the select dropdown
+                Object.entries(categories).forEach(([name, id]) => {
+                    const option = document.createElement('option');
+                    option.value = id;
+                    option.textContent = name;
+                    categorySelect.appendChild(option);
+                });
+            })
+            .catch(error => {
+                console.error('Error loading categories:', error);
+                alert('Failed to load quiz categories. Please try again later.');
+            });
+        
+        // Handle form submission
+        document.getElementById('quizSetupForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // Show loading spinner
+            document.getElementById('loading').classList.remove('hidden');
+            
+            // Get form values
+            const numQuestions = document.getElementById('numQuestions').value;
+            const category = document.getElementById('category').value;
+            
+            // Prepare the request payload
+            const payload = {
+                num_questions: parseInt(numQuestions),
+                category: parseInt(category)
+            };
+            
+            // Create a new quiz via API
+            fetch('/api/quizzes', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to create quiz');
+                }
+                return response.json();
+            })
+            .then(data => {
+                // Redirect to the quiz page with the quiz ID
+                window.location.href = `/quiz?quiz_id=${data.quiz_id}`;
+            })
+            .catch(error => {
+                console.error('Error creating quiz:', error);
+                alert('Failed to create quiz. Please try again.');
+                // Hide loading spinner
+                document.getElementById('loading').classList.add('hidden');
+            });
+        });
+    });
+</script>
+{% endblock %}
