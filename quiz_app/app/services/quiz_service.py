@@ -1,17 +1,21 @@
 import requests
 import random
 import json
-from typing import List, Dict, Optional, Tuple
+import datetime
+from typing import List, Dict, Optional, Tuple, Any
 import uuid
 
 from fastapi import HTTPException
-from app.models.quiz import Quiz, Question, QuizSettings, QuizAnswer, QuizResult
+from app.models.quiz import Quiz, Question, QuizSettings, QuizAnswer, QuizResult, QuizRecord, QuizDetails
 
 class QuizService:
     """Service to manage quiz functionality"""
     
     # Store quizzes in memory (would use a database in production)
     _quizzes = {}
+    
+    # Store completed quiz records (would use a database in production)
+    _quiz_records = []
     
     # Define the OpenTrivia Database API URL
     TRIVIA_API_URL = "https://opentdb.com/api.php"
@@ -90,6 +94,10 @@ class QuizService:
         # Check if answer is correct
         is_correct = selected_option.text == question.correct_answer
         
+        # Store the user's answer for the question
+        question.user_answer = selected_option.text
+        question.is_correct = is_correct
+        
         if is_correct:
             # Update the score
             quiz.current_score += 1
@@ -110,12 +118,87 @@ class QuizService:
         # Generate feedback based on percentage
         feedback = cls._generate_feedback(percentage)
         
-        return QuizResult(
+        # Create a result object
+        result = QuizResult(
             quiz_id=quiz_id,
             score=quiz.current_score,
             total_questions=quiz.num_questions,
             percentage=percentage,
             feedback=feedback
+        )
+        
+        # Store the completed quiz record if it doesn't exist
+        existing_record = next((r for r in cls._quiz_records if r.quiz_id == quiz_id), None)
+        if not existing_record:
+            # Create a quiz record
+            record = QuizRecord(
+                quiz_id=quiz_id,
+                category=quiz.category,
+                score=quiz.current_score,
+                total_questions=quiz.num_questions,
+                percentage=percentage,
+                date_completed=datetime.datetime.now()
+            )
+            cls._quiz_records.append(record)
+        
+        return result
+    
+    @classmethod
+    def get_quiz_records(cls) -> List[QuizRecord]:
+        """Get all quiz records"""
+        # Sort records by date, newest first
+        return sorted(cls._quiz_records, key=lambda r: r.date_completed, reverse=True)
+    
+    @classmethod
+    def get_quiz_details(cls, quiz_id: str) -> QuizDetails:
+        """Get detailed information about a completed quiz"""
+        # Find the quiz record
+        record = next((r for r in cls._quiz_records if r.quiz_id == quiz_id), None)
+        if not record:
+            raise HTTPException(status_code=404, detail="Quiz record not found")
+        
+        # Get the quiz itself
+        quiz = cls.get_quiz(quiz_id)
+        
+        # Get category name
+        category_name = next((name for name, id in cls.CATEGORIES.items() if id == quiz.category), "Unknown")
+        
+        # Generate feedback
+        feedback = cls._generate_feedback(record.percentage)
+        
+        # Prepare question details
+        questions_details = []
+        for question in quiz.questions:
+            # Map options with selection and correctness info
+            options_details = []
+            for option in question.options:
+                options_details.append({
+                    "id": option.id,
+                    "text": option.text,
+                    "is_correct": option.text == question.correct_answer,
+                    "is_selected": option.text == question.user_answer
+                })
+            
+            questions_details.append({
+                "id": question.id,
+                "question": question.question,
+                "correct_answer": question.correct_answer,
+                "user_answer": question.user_answer,
+                "is_correct": question.is_correct,
+                "options": options_details
+            })
+        
+        # Create quiz details object
+        return QuizDetails(
+            quiz_id=quiz_id,
+            category=quiz.category,
+            category_name=category_name,
+            score=record.score,
+            total_questions=record.total_questions,
+            percentage=record.percentage,
+            feedback=feedback,
+            date_completed=record.date_completed,
+            questions=questions_details
         )
     
     @classmethod
