@@ -32,16 +32,25 @@ This interactive quiz game fetches random questions using the Open Trivia Databa
 - 👤 **User-Friendly Design**: Simple and intuitive multiple-choice format
 - 📈 **Performance Feedback**: Receive personalized feedback based on your score
 ## 🎥 Demo
-
 ### Quiz Game Features
+
 <details>
 <summary>Click to view Demo</summary>
 
-| ![QuizQuestion](https://github.com/user-attachments/assets/4d5810bb-a1f6-4403-9caf-cd1c6d70ba87) | ![AnswerSelection](https://github.com/user-attachments/assets/9269c6a0-8b62-45b4-80de-9fc27420778e) | ![ScoreSummary](https://github.com/user-attachments/assets/385c3edf-0988-467f-a19e-ecd7be13f671) | 
+| ![Quiz Question Screen](https://github.com/user-attachments/assets/8f2ad6f3-77b2-4ece-acd2-43564b9b2fdd) | ![Answer Selection](https://github.com/user-attachments/assets/5cbb0fc4-8e4e-496a-a0cf-0fd4be3e751c) | ![Score Summary](https://github.com/user-attachments/assets/2439b7c5-13bb-49e9-ad0b-1a2245e37e34) | 
 | --- | --- | --- |
-| **Quiz Question Screen**: Interactive multiple-choice question interface with randomized answers. | **Answer Selection**: User selects an answer from the given options. | **Score Summary**: Final performance feedback based on correct answers and overall score. |
+| **Quiz Question Screen**: Interactive multiple-choice question interface where questions are displayed and randomized answer options are provided. | **Answer Selection**: Users select an answer from the options provided in the quiz interface. | **Score Summary**: Final score feedback based on the user's correct answers, including a percentage and performance summary. |
+
+| ![Game Feedback](https://github.com/user-attachments/assets/c1e981ba-a33d-41d9-9ac3-13aa2ae6c4ee) | ![Gameplay Example](https://github.com/user-attachments/assets/2c5bee0f-9cda-41d0-a913-bf93e502a9f2) | ![User Result](https://github.com/user-attachments/assets/ba52b610-3711-451b-a2fd-3abc46e46780) |
+| --- | --- | --- |
+| **Game Feedback**: Visual feedback provided after each question or at the end of the game, summarizing the user's performance. | **Gameplay Example**: An example of the user’s progress during the quiz, showing how the system updates after each response. | **User Result**: The results page displaying the final score and detailed analysis based on the user's answers. |
+
+| ![Quiz End Screen](https://github.com/user-attachments/assets/ec1891e4-9502-4f27-93f8-b6bf7cb49ad4) | ![Feedback Detail](https://github.com/user-attachments/assets/4b93c578-95ec-4908-b9aa-8137e048f1bc) |
+| --- | --- |
+| **Quiz End Screen**: The concluding screen showing total score and an option to restart or finish the quiz. | **Feedback Detail**: Provides detailed feedback on each question, helping the user understand the mistakes and correct answers. |
 
 </details>
+
 
 ## 🚀 Installation
 
