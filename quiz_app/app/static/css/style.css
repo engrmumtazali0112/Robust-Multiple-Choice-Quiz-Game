@@ -5,8 +5,8 @@
 
 /* General Styles */
 :root {
-  --primary-color: #4a6ee0;
-  --primary-dark: #3a5ac1;
+  --primary-color: #48c20f;
+  --primary-dark: #10bb10;
   --primary-light: #e6eafa;
   --secondary-color: #f2b705;
   --success-color: #2ecc71;
@@ -149,7 +149,7 @@ input:focus, select:focus, textarea:focus {
   background: var(--primary-dark);
   transform: translateY(-1px);
   text-decoration: none;
-  color: white;
+  color: rgb(16, 146, 33);
 }
 
 .btn-primary {
