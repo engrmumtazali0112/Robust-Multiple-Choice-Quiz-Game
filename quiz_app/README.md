@@ -19,7 +19,7 @@ A robust command-line quiz game designed to test your knowledge with multiple-ch
 </div>
 
 ## 📋 Description
-
+https://github.com/engrmumtazali0112/Robust-Multiple-Choice-Quiz-Game.git
 This interactive quiz game fetches random questions using the Open Trivia Database API and provides a fallback to local questions if the API is unavailable. Challenge yourself with questions from more than 20 different categories!
 
 ## ✨ Key Features
@@ -43,6 +43,32 @@ This interactive quiz game fetches random questions using the Open Trivia Databa
 
 </details>
 
+## 🗂 Project Structure
+```
+quiz_app/
+├── main.py              # FastAPI application entry point
+├── requirements.txt     # Project dependencies
+├── app/
+│   ├── __init__.py
+│   ├── api/
+│   │   ├── __init__.py
+│   │   └── quiz_routes.py
+│   ├── models/
+│   │   ├── __init__.py
+│   │   └── quiz.py
+│   ├── services/
+│   │   ├── __init__.py
+│   │   └── quiz_service.py
+│   └── static/
+│       ├── css/
+│       │   └── style.css
+│       └── js/
+│           └── main.js
+└── templates/
+    ├── base.html
+    ├── index.html
+    └── quiz.html
+```
 ## 🚀 Installation
 
 1. **Clone the repository**
