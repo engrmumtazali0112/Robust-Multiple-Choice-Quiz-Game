@@ -1,18 +1,16 @@
 from pydantic import BaseModel, Field
-from typing import List, Dict, Optional
+from typing import List, Optional, Dict, Any
 import uuid
+import datetime
 import html
-import random  # Added import for random module
+import random
 
-class QuizSettings(BaseModel):
-    """Model for quiz configuration settings"""
-    num_questions: int = Field(default=10, ge=1, le=20)
-    category: int = Field(default=9)  # Default to General Knowledge
 
 class QuestionOption(BaseModel):
     """Model for a single answer option"""
     id: str
     text: str
+
 
 class Question(BaseModel):
     """Model for a single quiz question"""
@@ -20,9 +18,11 @@ class Question(BaseModel):
     question: str
     options: List[QuestionOption]
     correct_answer: str
+    user_answer: Optional[str] = None
+    is_correct: Optional[bool] = None
     
     @classmethod
-    def from_api(cls, raw_question: Dict) -> 'Question':
+    def from_api(cls, raw_question: Dict[str, Any]) -> 'Question':
         """Create a Question object from API response data"""
         # Clean and unescape HTML entities
         question_text = html.unescape(raw_question['question'])
@@ -48,6 +48,7 @@ class Question(BaseModel):
             correct_answer=correct_answer
         )
 
+
 class Quiz(BaseModel):
     """Model for an entire quiz"""
     id: str
@@ -66,10 +67,18 @@ class Quiz(BaseModel):
             num_questions=num_questions
         )
 
+
+class QuizSettings(BaseModel):
+    """Model for quiz configuration settings"""
+    num_questions: int = Field(default=10, ge=1, le=20)
+    category: int = Field(default=9)  # Default to General Knowledge
+
+
 class QuizAnswer(BaseModel):
     """Model for an answer submission"""
     question_id: str
     selected_option_id: str
+
 
 class QuizResult(BaseModel):
     """Model for quiz results"""
@@ -78,3 +87,26 @@ class QuizResult(BaseModel):
     total_questions: int
     percentage: float
     feedback: str
+
+
+class QuizRecord(BaseModel):
+    """Model for storing a completed quiz record"""
+    quiz_id: str
+    category: int
+    score: int
+    total_questions: int
+    percentage: float
+    date_completed: datetime.datetime
+
+
+class QuizDetails(BaseModel):
+    """Model for detailed quiz information"""
+    quiz_id: str
+    category: int
+    category_name: str
+    score: int
+    total_questions: int
+    percentage: float
+    feedback: str
+    date_completed: datetime.datetime
+    questions: List[Dict[str, Any]]
