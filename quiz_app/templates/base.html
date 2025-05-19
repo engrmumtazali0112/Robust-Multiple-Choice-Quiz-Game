@@ -4,7 +4,88 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Quiz Game{% endblock %}</title>
+    <!-- External CSS (maintains compatibility with other pages) -->
     <link rel="stylesheet" href="{{ url_for('static', path='/css/style.css') }}">
+    <!-- Internal CSS for base.html -->
+    <style>
+        /* Enhanced Header Styles */
+        header {
+            background: linear-gradient(to right, #74c25c, #c6e45a);
+            padding: 18px 0;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+        }
+        
+        header .container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .logo {
+            font-size: 1.9rem;
+            color: white;
+            font-weight: 700;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
+            display: flex;
+            align-items: center;
+            letter-spacing: 0.5px;
+        }
+        
+        nav ul {
+            display: flex;
+            list-style: none;
+            gap: 10px;
+        }
+        
+        nav ul li a {
+            padding: 8px 16px;
+            border-radius: 20px;
+            color: rgb(255, 255, 255);
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        
+        nav ul li a:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+            color: white;
+            text-decoration: none;
+            transform: translateY(-2px);
+        }
+        
+        /* Enhanced Container */
+        .container {
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+        
+        /* Enhanced Footer */
+        footer {
+            background: linear-gradient(to right, #333, #444);
+            color: white;
+            text-align: center;
+            padding: 25px 0;
+            margin-top: 50px;
+            box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+        }
+        
+        footer p {
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+        
+        /* Responsive Adjustments */
+        @media (max-width: 768px) {
+            .logo {
+                font-size: 1.6rem;
+            }
+            
+            nav ul li a {
+                padding: 6px 12px;
+            }
+        }
+    </style>
     {% block extra_head %}{% endblock %}
 </head>
 <body>
@@ -14,6 +95,7 @@
             <nav>
                 <ul>
                     <li><a href="/">Home</a></li>
+                    <li><a href="/records">Records</a></li>
                 </ul>
             </nav>
         </div>
