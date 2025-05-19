@@ -31,6 +31,17 @@ This interactive quiz game fetches random questions using the Open Trivia Databa
 - 🎯 **Multiple Categories**: Choose from 22+ different quiz categories
 - 👤 **User-Friendly Design**: Simple and intuitive multiple-choice format
 - 📈 **Performance Feedback**: Receive personalized feedback based on your score
+## 🎥 Demo
+
+### Quiz Game Features
+<details>
+<summary>Click to view Demo</summary>
+
+| ![QuizQuestion](https://github.com/user-attachments/assets/4d5810bb-a1f6-4403-9caf-cd1c6d70ba87) | ![AnswerSelection](https://github.com/user-attachments/assets/9269c6a0-8b62-45b4-80de-9fc27420778e) | ![ScoreSummary](https://github.com/user-attachments/assets/385c3edf-0988-467f-a19e-ecd7be13f671) | 
+| --- | --- | --- |
+| **Quiz Question Screen**: Interactive multiple-choice question interface with randomized answers. | **Answer Selection**: User selects an answer from the given options. | **Score Summary**: Final performance feedback based on correct answers and overall score. |
+
+</details>
 
 ## 🚀 Installation
 
