@@ -67,13 +67,52 @@ This interactive quiz game fetches random questions using the Open Trivia Databa
 3. **Install required dependencies**
    ```bash
    pip install requests
-   ```
 
+```
+pip install requirnments.txt
+[sqlalchemy>=1.4.0,<2.0.0
+psycopg2-binary>=2.9.3
+fastapi>=0.100.0
+uvicorn>=0.22.0
+pydantic>=1.10.0
+requests>=2.28.0
+python-multipart>=0.0.6
+jinja2>=3.1.0
+alembic>=1.10.0]
+  ```
+
+## 🧩 Project Structure
+
+```quiz_app/
+├── main.py              # FastAPI application entry point
+├── requirements.txt     # Project dependencies
+├── app/
+│   ├── __init__.py
+│   ├── api/
+│   │   ├── __init__.py
+│   │   └── quiz_routes.py
+│   ├── models/
+│   │   ├── __init__.py
+│   │   └── quiz.py
+│   ├── services/
+│   │   ├── __init__.py
+│   │   └── quiz_service.py
+│   └── static/
+│       ├── css/
+│       │   └── style.css
+│       └── js/
+│           └── main.js
+└── templates/
+    ├── base.html
+    ├── index.html
+    └── quiz.html
+```
 ## 🎮 How to Play
 
 1. **Run the game**
-   ```bash
-   python quiz_game.py
+   ```
+   cd quiz_app
+      python main.py
    ```
 
 2. **Select the number of questions** (1-20)
@@ -97,14 +136,7 @@ This interactive quiz game fetches random questions using the Open Trivia Databa
 | 19         | Mathematics            | 31         | Anime & Manga          |
 | 20         | Mythology              | 32         | Cartoons & Animation   |
 
-## 🧩 Project Structure
 
-```
-Robust-Multiple-Choice-Quiz-Game/
-├── README.md
-├── quiz_game.py
-└── requirements.txt
-```
 
 ## 🤝 Contributing
 
