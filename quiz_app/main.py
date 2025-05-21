@@ -4,10 +4,12 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, RedirectResponse
 import uvicorn
 from typing import Optional, List
+from sqlalchemy.orm import Session
 
 from app.models.quiz import QuizSettings
 from app.services.quiz_service import QuizService
 from app.api.quiz_routes import router as quiz_router
+from app.database import get_db
 
 app = FastAPI(title="Quiz Game API")
 
@@ -24,7 +26,9 @@ app.include_router(quiz_router, prefix="/api")
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
     """Render the home page with quiz setup form"""
-    return templates.TemplateResponse("index.html", {"request": request})
+    # Get categories for the dropdown
+    categories = QuizService.get_categories()
+    return templates.TemplateResponse("index.html", {"request": request, "categories": categories})
 
 @app.get("/quiz", response_class=HTMLResponse)
 async def quiz_page(request: Request, quiz_id: Optional[str] = None):
@@ -33,18 +37,22 @@ async def quiz_page(request: Request, quiz_id: Optional[str] = None):
         return RedirectResponse(url="/")
     return templates.TemplateResponse("quiz.html", {"request": request, "quiz_id": quiz_id})
 
-@app.get("/records")
-async def records(request: Request):
-    quiz_records = QuizService.get_quiz_records()
-    categories = QuizService.get_categories()
-    
-    # Create an inverted dictionary for easy lookup (id -> name)
+@app.get("/records", response_class=HTMLResponse)
+async def records(request: Request, db: Session = Depends(get_db)):
+    quiz_records = QuizService.get_quiz_records(db)
+    categories = QuizService.get_categories()  # This must be present
     categories_by_id = {id: name for name, id in categories.items()}
     
     return templates.TemplateResponse(
-        "records.html", 
-        {"request": request, "quiz_records": quiz_records, "categories": categories, "categories_by_id": categories_by_id}
+        "records.html",
+        {
+            "request": request,
+            "quiz_records": quiz_records,
+            "categories": categories,           # pass categories dict
+            "categories_by_id": categories_by_id
+        }
     )
+
 @app.get("/quiz-details", response_class=HTMLResponse)
 async def quiz_details(request: Request, quiz_id: Optional[str] = None):
     """Render the quiz details page"""
