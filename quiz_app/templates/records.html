@@ -1,6 +1,22 @@
+
 {% extends "base.html" %}
 
-{% block title %}Quiz Records - Quiz Master{% endblock %}
+{% block title %}Quiz Records - Quiz Master<!-- Delete Confirmation Modal -->
+<div id="delete-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Confirm Deletion</h3>
+        </div>
+        <div class="modal-body">
+            <p>Are you sure you want to delete this quiz record? This action cannot be undone.</p>
+        </div>
+        <div class="modal-footer">
+            <button id="cancel-delete" class="btn">Cancel</button>
+            <button id="confirm-delete" class="btn btn-danger">Delete</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
 
 {% block extra_head %}
 <style>
@@ -204,9 +220,63 @@
         font-size: 1.1rem;
     }
 
-    /* Utility Classes */
-    .hidden {
-        display: none !important;
+    /* Delete button hover */
+    .delete-record:hover {
+        background-color: #bd2130 !important;
+        border-color: #bd2130 !important;
+    }
+
+    /* Confirmation modal */
+    .modal {
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        align-items: center;
+        justify-content: center;
+    }
+
+    .modal-content {
+        background-color: white;
+        border-radius: var(--border-radius);
+        padding: 2rem;
+        width: 90%;
+        max-width: 500px;
+        box-shadow: var(--box-shadow);
+    }
+
+    .modal-header {
+        margin-bottom: 1.5rem;
+    }
+
+    .modal-header h3 {
+        margin: 0;
+        color: var(--dark-text);
+    }
+
+    .modal-body {
+        margin-bottom: 1.5rem;
+    }
+
+    .modal-footer {
+        display: flex;
+        justify-content: flex-end;
+        gap: 1rem;
+    }
+
+    .btn-danger {
+        background-color: #dc3545;
+        color: white;
+        border-color: #dc3545;
+    }
+
+    .btn-danger:hover {
+        background-color: #bd2130;
+        border-color: #bd2130;
     }
 
     /* Responsive Adjustments */
@@ -281,13 +351,32 @@
                 <tr>
                     <td>{{ record.date_completed }}</td>
                     <td>{{ categories_by_id.get(record.category, "Unknown") }}</td>
-                    <td>{{ record.num_questions }}</td> 
+                    <td>{{ record.total_questions }}</td> <!-- Fixed field name -->
                     <td>{{ record.score }}</td>
                     <td class="{{ 'score-high' if record.percentage >= 70 else 'score-medium' if record.percentage >= 50 else 'score-low' }}">
                         {{ record.percentage }}%
                     </td>
                     <td>
-                        <a href="/quiz-details?quiz_id={{ record.quiz_id }}" class="btn btn-small btn-primary">Details</a>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <a href="/quiz-details?quiz_id={{ record.quiz_id }}" class="btn btn-small btn-primary">Details</a>
+                            <button class="btn btn-small delete-record" data-quiz-id="{{ record.quiz_id }}" 
+                                    style="background-color: #dc3545; color: white; border-color: #dc3545;">Delete</button>
+                        </div>
+                        <!-- Delete Confirmation Modal -->
+                        <div id="delete-modal" class="modal">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h3>Confirm Deletion</h3>
+                                </div>
+                                <div class="modal-body">
+                                    <p>Are you sure you want to delete this quiz record? This action cannot be undone.</p>
+                                </div>
+                                <div class="modal-footer">
+                                    <button id="cancel-delete" class="btn">Cancel</button>
+                                    <button id="confirm-delete" class="btn btn-danger">Delete</button>
+                                </div>
+                            </div>
+                        </div>
                     </td>
                 </tr>
                 {% endfor %}
@@ -356,5 +445,74 @@
             row.style.display = '';
         });
     }
+
+    // Delete Record Functionality
+    const modal = document.getElementById('delete-modal');
+    const cancelDelete = document.getElementById('cancel-delete');
+    const confirmDelete = document.getElementById('confirm-delete');
+    let quizIdToDelete = null;
+
+    // Add event listeners to all delete buttons
+    document.querySelectorAll('.delete-record').forEach(button => {
+        button.addEventListener('click', function() {
+            quizIdToDelete = this.getAttribute('data-quiz-id');
+            modal.style.display = 'flex';
+        });
+    });
+
+    // Cancel delete
+    cancelDelete.addEventListener('click', function() {
+        modal.style.display = 'none';
+        quizIdToDelete = null;
+    });
+
+    // Close modal if clicked outside
+    window.addEventListener('click', function(event) {
+        if (event.target === modal) {
+            modal.style.display = 'none';
+            quizIdToDelete = null;
+        }
+    });
+
+    // Confirm delete
+    confirmDelete.addEventListener('click', function() {
+        if (quizIdToDelete) {
+            // Show loading state
+            confirmDelete.textContent = 'Deleting...';
+            confirmDelete.disabled = true;
+            
+            // Send delete request to server
+            fetch(`/delete-quiz-record/${quizIdToDelete}`, {
+                method: 'DELETE',
+            })
+            .then(response => {
+                if (response.ok) {
+                    return response.json();
+                }
+                throw new Error('Failed to delete record');
+            })
+            .then(data => {
+                // Hide the modal
+                modal.style.display = 'none';
+                
+                // Remove the row from the table
+                const rowToDelete = document.querySelector(`button[data-quiz-id="${quizIdToDelete}"]`).closest('tr');
+                rowToDelete.remove();
+                
+                // Show success message
+                alert('Quiz record deleted successfully!');
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Failed to delete quiz record. Please try again.');
+            })
+            .finally(() => {
+                // Reset button state
+                confirmDelete.textContent = 'Delete';
+                confirmDelete.disabled = false;
+                quizIdToDelete = null;
+            });
+        }
+    });
 </script>
 {% endblock %}

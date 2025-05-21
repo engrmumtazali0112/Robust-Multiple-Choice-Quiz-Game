@@ -353,6 +353,43 @@ class QuizService:
             print("Using local backup questions instead.")
             return cls._get_local_questions(num_questions)
     
+    
+    # Add this to your QuizService class
+
+    @classmethod
+    def delete_quiz_record(cls, quiz_id: str, db: Session) -> bool:
+        """Delete a quiz record and all associated data"""
+        try:
+            # Delete user answers first (foreign key constraint)
+            db_questions = db.query(DBQuestion).filter(DBQuestion.quiz_id == quiz_id).all()
+            for question in db_questions:
+                db.query(DBUserAnswer).filter(DBUserAnswer.question_id == question.id).delete()
+            
+            # Delete question options
+            for question in db_questions:
+                db.query(DBQuestionOption).filter(DBQuestionOption.question_id == question.id).delete()
+            
+            # Delete questions
+            db.query(DBQuestion).filter(DBQuestion.quiz_id == quiz_id).delete()
+            
+            # Delete quiz result
+            db.query(DBQuizResult).filter(DBQuizResult.quiz_id == quiz_id).delete()
+            
+            # Delete quiz
+            db.query(DBQuiz).filter(DBQuiz.id == quiz_id).delete()
+            
+            # Commit changes
+            db.commit()
+            return True
+        except Exception as e:
+            db.rollback()
+            print(f"Error deleting quiz record: {e}")
+            return False
+
+# Add this route to your FastAPI app
+
+  
+    
     @classmethod
     def _get_local_questions(cls, num_questions: int) -> List[Question]:
         """Get local backup questions"""
