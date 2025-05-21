@@ -5,17 +5,13 @@ import datetime
 from typing import List, Dict, Optional, Tuple, Any
 import uuid
 
-from fastapi import HTTPException
+from fastapi import HTTPException, Depends
+from sqlalchemy.orm import Session
 from app.models.quiz import Quiz, Question, QuizSettings, QuizAnswer, QuizResult, QuizRecord, QuizDetails
+from app.models.database import DBQuiz, DBQuestion, DBQuestionOption, DBUserAnswer, DBQuizResult
 
 class QuizService:
     """Service to manage quiz functionality"""
-    
-    # Store quizzes in memory (would use a database in production)
-    _quizzes = {}
-    
-    # Store completed quiz records (would use a database in production)
-    _quiz_records = []
     
     # Define the OpenTrivia Database API URL
     TRIVIA_API_URL = "https://opentdb.com/api.php"
@@ -52,7 +48,7 @@ class QuizService:
         return cls.CATEGORIES
     
     @classmethod
-    def create_quiz(cls, settings: QuizSettings) -> Quiz:
+    def create_quiz(cls, settings: QuizSettings, db: Session) -> Quiz:
         """Create a new quiz based on given settings"""
         # Fetch questions from the API
         questions = cls._fetch_questions(settings.num_questions, settings.category)
@@ -64,140 +60,277 @@ class QuizService:
             num_questions=settings.num_questions
         )
         
-        # Store the quiz in our in-memory data store
-        cls._quizzes[quiz.id] = quiz
+        # Store the quiz in the database
+        db_quiz = DBQuiz(
+            id=quiz.id,
+            category=settings.category,
+            num_questions=settings.num_questions,
+            current_score=0
+        )
+        db.add(db_quiz)
+        
+        # Store questions and options in the database
+        for question in quiz.questions:
+            db_question = DBQuestion(
+                id=question.id,
+                quiz_id=quiz.id,
+                question=question.question,
+                correct_answer=question.correct_answer
+            )
+            db.add(db_question)
+            
+            for option in question.options:
+                db_option = DBQuestionOption(
+                    id=option.id,
+                    question_id=question.id,
+                    text=option.text
+                )
+                db.add(db_option)
+        
+        db.commit()
         
         return quiz
     
     @classmethod
-    def get_quiz(cls, quiz_id: str) -> Quiz:
-        """Get a quiz by ID"""
-        if quiz_id not in cls._quizzes:
+    def get_quiz(cls, quiz_id: str, db: Session) -> Quiz:
+        """Get a quiz by ID from the database"""
+        # Query the database for the quiz
+        db_quiz = db.query(DBQuiz).filter(DBQuiz.id == quiz_id).first()
+        if not db_quiz:
             raise HTTPException(status_code=404, detail="Quiz not found")
-        return cls._quizzes[quiz_id]
+        
+        # Get the questions for this quiz
+        db_questions = db.query(DBQuestion).filter(DBQuestion.quiz_id == quiz_id).all()
+        
+        # Create a Quiz object
+        questions = []
+        for db_question in db_questions:
+            # Get options for this question
+            db_options = db.query(DBQuestionOption).filter(
+                DBQuestionOption.question_id == db_question.id
+            ).all()
+            
+            # Create options
+            options = [
+                {"id": opt.id, "text": opt.text}
+                for opt in db_options
+            ]
+            
+            # Check if user has answered this question
+            db_answer = db.query(DBUserAnswer).filter(
+                DBUserAnswer.question_id == db_question.id
+            ).first()
+            
+            user_answer = None
+            is_correct = None
+            if db_answer:
+                # Get the selected option text
+                selected_option = db.query(DBQuestionOption).filter(
+                    DBQuestionOption.id == db_answer.selected_option_id
+                ).first()
+                if selected_option:
+                    user_answer = selected_option.text
+                    is_correct = db_answer.is_correct
+            
+            # Create Question object
+            from app.models.quiz import QuestionOption
+            question = Question(
+                id=db_question.id,
+                question=db_question.question,
+                options=[QuestionOption(id=opt["id"], text=opt["text"]) for opt in options],
+                correct_answer=db_question.correct_answer,
+                user_answer=user_answer,
+                is_correct=is_correct
+            )
+            questions.append(question)
+        
+        # Create and return Quiz object
+        return Quiz(
+            id=db_quiz.id,
+            questions=questions,
+            category=db_quiz.category,
+            num_questions=db_quiz.num_questions,
+            current_score=db_quiz.current_score
+        )
     
     @classmethod
-    def submit_answer(cls, quiz_id: str, answer: QuizAnswer) -> Tuple[bool, Optional[str]]:
+    def submit_answer(cls, quiz_id: str, answer: QuizAnswer, db: Session) -> Tuple[bool, Optional[str]]:
         """Submit an answer to a quiz question"""
-        quiz = cls.get_quiz(quiz_id)
+        # Get the quiz from the database
+        db_quiz = db.query(DBQuiz).filter(DBQuiz.id == quiz_id).first()
+        if not db_quiz:
+            raise HTTPException(status_code=404, detail="Quiz not found")
         
-        # Find the question
-        question = next((q for q in quiz.questions if q.id == answer.question_id), None)
-        if not question:
+        # Get the question
+        db_question = db.query(DBQuestion).filter(DBQuestion.id == answer.question_id).first()
+        if not db_question:
             raise HTTPException(status_code=404, detail="Question not found")
         
-        # Find the selected option
-        selected_option = next((opt for opt in question.options if opt.id == answer.selected_option_id), None)
-        if not selected_option:
+        # Get the selected option
+        db_option = db.query(DBQuestionOption).filter(DBQuestionOption.id == answer.selected_option_id).first()
+        if not db_option:
             raise HTTPException(status_code=404, detail="Option not found")
         
         # Check if answer is correct
-        is_correct = selected_option.text == question.correct_answer
+        is_correct = db_option.text == db_question.correct_answer
         
-        # Store the user's answer for the question
-        question.user_answer = selected_option.text
-        question.is_correct = is_correct
+        # Store the user's answer
+        db_answer = db.query(DBUserAnswer).filter(
+            DBUserAnswer.question_id == answer.question_id
+        ).first()
         
+        if db_answer:
+            # Update existing answer
+            db_answer.selected_option_id = answer.selected_option_id
+            db_answer.is_correct = is_correct
+        else:
+            # Create new answer
+            db_answer = DBUserAnswer(
+                question_id=answer.question_id,
+                selected_option_id=answer.selected_option_id,
+                is_correct=is_correct
+            )
+            db.add(db_answer)
+        
+        # Update quiz score if correct
         if is_correct:
-            # Update the score
-            quiz.current_score += 1
-            
-        # Update the quiz in our store
-        cls._quizzes[quiz_id] = quiz
+            db_quiz.current_score += 1
         
-        return is_correct, question.correct_answer
+        db.commit()
+        
+        return is_correct, db_question.correct_answer
     
     @classmethod
-    def get_quiz_result(cls, quiz_id: str) -> QuizResult:
+    def get_quiz_result(cls, quiz_id: str, db: Session) -> QuizResult:
         """Get the result for a completed quiz"""
-        quiz = cls.get_quiz(quiz_id)
+        # Get the quiz from the database
+        db_quiz = db.query(DBQuiz).filter(DBQuiz.id == quiz_id).first()
+        if not db_quiz:
+            raise HTTPException(status_code=404, detail="Quiz not found")
         
         # Calculate percentage
-        percentage = (quiz.current_score / quiz.num_questions) * 100
+        percentage = (db_quiz.current_score / db_quiz.num_questions) * 100
         
         # Generate feedback based on percentage
         feedback = cls._generate_feedback(percentage)
         
-        # Create a result object
-        result = QuizResult(
+        # Check if result already exists
+        db_result = db.query(DBQuizResult).filter(DBQuizResult.quiz_id == quiz_id).first()
+        
+        if not db_result:
+            # Create new result
+            db_result = DBQuizResult(
+                quiz_id=quiz_id,
+                score=db_quiz.current_score,
+                total_questions=db_quiz.num_questions,
+                percentage=percentage,
+                feedback=feedback
+            )
+            db.add(db_result)
+            db.commit()
+        
+        # Create and return result object
+        return QuizResult(
             quiz_id=quiz_id,
-            score=quiz.current_score,
-            total_questions=quiz.num_questions,
+            score=db_quiz.current_score,
+            total_questions=db_quiz.num_questions,
             percentage=percentage,
             feedback=feedback
         )
-        
-        # Store the completed quiz record if it doesn't exist
-        existing_record = next((r for r in cls._quiz_records if r.quiz_id == quiz_id), None)
-        if not existing_record:
-            # Create a quiz record
-            record = QuizRecord(
-                quiz_id=quiz_id,
-                category=quiz.category,
-                score=quiz.current_score,
-                total_questions=quiz.num_questions,
-                percentage=percentage,
-                date_completed=datetime.datetime.now()
-            )
-            cls._quiz_records.append(record)
-        
-        return result
     
     @classmethod
-    def get_quiz_records(cls) -> List[QuizRecord]:
-        """Get all quiz records"""
-        # Sort records by date, newest first
-        return sorted(cls._quiz_records, key=lambda r: r.date_completed, reverse=True)
-    
+    def get_quiz_records(cls, db: Session) -> List[QuizRecord]:
+        """Get all quiz records from the database"""
+        try:
+            # Get all quiz results from the database
+            db_results = db.query(DBQuizResult, DBQuiz).join(
+                DBQuiz, DBQuizResult.quiz_id == DBQuiz.id
+            ).order_by(DBQuizResult.created_at.desc()).all()
+            
+            # Convert to QuizRecord objects
+            records = []
+            for result, quiz in db_results:
+                record = QuizRecord(
+                    quiz_id=result.quiz_id,
+                    category=quiz.category,
+                    score=result.score,
+                    total_questions=result.total_questions,  # This is the field used in the template
+                    percentage=result.percentage,
+                    date_completed=result.created_at
+                )
+                records.append(record)
+            
+            return records
+        except Exception as e:
+            print(f"Error fetching quiz records: {e}")
+            return []
     @classmethod
-    def get_quiz_details(cls, quiz_id: str) -> QuizDetails:
+    def get_quiz_details(cls, quiz_id: str, db: Session) -> QuizDetails:
         """Get detailed information about a completed quiz"""
-        # Find the quiz record
-        record = next((r for r in cls._quiz_records if r.quiz_id == quiz_id), None)
-        if not record:
+        # Get the quiz and result from the database
+        db_result = db.query(DBQuizResult).filter(DBQuizResult.quiz_id == quiz_id).first()
+        if not db_result:
             raise HTTPException(status_code=404, detail="Quiz record not found")
         
-        # Get the quiz itself
-        quiz = cls.get_quiz(quiz_id)
+        db_quiz = db.query(DBQuiz).filter(DBQuiz.id == quiz_id).first()
+        if not db_quiz:
+            raise HTTPException(status_code=404, detail="Quiz not found")
         
         # Get category name
-        category_name = next((name for name, id in cls.CATEGORIES.items() if id == quiz.category), "Unknown")
+        category_name = next((name for name, id in cls.CATEGORIES.items() if id == db_quiz.category), "Unknown")
         
-        # Generate feedback
-        feedback = cls._generate_feedback(record.percentage)
-        
-        # Prepare question details
+        # Get questions with options and answers
         questions_details = []
-        for question in quiz.questions:
+        db_questions = db.query(DBQuestion).filter(DBQuestion.quiz_id == quiz_id).all()
+        
+        for db_question in db_questions:
+            # Get options
+            db_options = db.query(DBQuestionOption).filter(
+                DBQuestionOption.question_id == db_question.id
+            ).all()
+            
+            # Get user answer
+            db_answer = db.query(DBUserAnswer).filter(
+                DBUserAnswer.question_id == db_question.id
+            ).first()
+            
+            user_answer = None
+            if db_answer:
+                selected_option = db.query(DBQuestionOption).filter(
+                    DBQuestionOption.id == db_answer.selected_option_id
+                ).first()
+                if selected_option:
+                    user_answer = selected_option.text
+            
             # Map options with selection and correctness info
             options_details = []
-            for option in question.options:
+            for option in db_options:
                 options_details.append({
                     "id": option.id,
                     "text": option.text,
-                    "is_correct": option.text == question.correct_answer,
-                    "is_selected": option.text == question.user_answer
+                    "is_correct": option.text == db_question.correct_answer,
+                    "is_selected": option.text == user_answer if user_answer else False
                 })
             
             questions_details.append({
-                "id": question.id,
-                "question": question.question,
-                "correct_answer": question.correct_answer,
-                "user_answer": question.user_answer,
-                "is_correct": question.is_correct,
+                "id": db_question.id,
+                "question": db_question.question,
+                "correct_answer": db_question.correct_answer,
+                "user_answer": user_answer,
+                "is_correct": db_answer.is_correct if db_answer else None,
                 "options": options_details
             })
         
-        # Create quiz details object
+        # Create and return quiz details object
         return QuizDetails(
             quiz_id=quiz_id,
-            category=quiz.category,
+            category=db_quiz.category,
             category_name=category_name,
-            score=record.score,
-            total_questions=record.total_questions,
-            percentage=record.percentage,
-            feedback=feedback,
-            date_completed=record.date_completed,
+            score=db_result.score,
+            total_questions=db_result.total_questions,
+            percentage=db_result.percentage,
+            feedback=db_result.feedback,
+            date_completed=db_result.created_at,
             questions=questions_details
         )
     
