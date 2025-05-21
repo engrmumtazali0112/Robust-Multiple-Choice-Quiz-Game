@@ -1,8 +1,10 @@
 from fastapi import APIRouter, HTTPException, Depends
 from typing import Dict, List, Any
+from sqlalchemy.orm import Session
 
 from app.models.quiz import QuizSettings, QuizAnswer, QuizResult, QuizRecord, QuizDetails
 from app.services.quiz_service import QuizService
+from app.database import get_db
 
 router = APIRouter()
 
@@ -12,15 +14,15 @@ async def get_categories() -> Dict[str, int]:
     return QuizService.get_categories()
 
 @router.post("/quizzes")
-async def create_quiz(settings: QuizSettings) -> Dict[str, str]:
+async def create_quiz(settings: QuizSettings, db: Session = Depends(get_db)) -> Dict[str, str]:
     """Create a new quiz"""
-    quiz = QuizService.create_quiz(settings)
+    quiz = QuizService.create_quiz(settings, db)
     return {"quiz_id": quiz.id}
 
 @router.get("/quizzes/{quiz_id}")
-async def get_quiz(quiz_id: str) -> Dict[str, Any]:
+async def get_quiz(quiz_id: str, db: Session = Depends(get_db)) -> Dict[str, Any]:
     """Get a quiz by ID"""
-    quiz = QuizService.get_quiz(quiz_id)
+    quiz = QuizService.get_quiz(quiz_id, db)
     
     # Convert to dict and only send necessary information to frontend
     return {
@@ -39,23 +41,25 @@ async def get_quiz(quiz_id: str) -> Dict[str, Any]:
     }
 
 @router.post("/quizzes/{quiz_id}/answer")
-async def submit_answer(quiz_id: str, answer: QuizAnswer) -> Dict[str, Any]:
+async def submit_answer(quiz_id: str, answer: QuizAnswer, db: Session = Depends(get_db)) -> Dict[str, Any]:
     """Submit an answer to a quiz question"""
-    is_correct, correct_answer = QuizService.submit_answer(quiz_id, answer)
+    is_correct, correct_answer = QuizService.submit_answer(quiz_id, answer, db)
     return {"is_correct": is_correct, "correct_answer": correct_answer}
 
 @router.get("/quizzes/{quiz_id}/result")
-async def get_quiz_result(quiz_id: str) -> QuizResult:
+async def get_quiz_result(quiz_id: str, db: Session = Depends(get_db)) -> QuizResult:
     """Get the result for a completed quiz"""
-    return QuizService.get_quiz_result(quiz_id)
+    return QuizService.get_quiz_result(quiz_id, db)
 
 @router.get("/quizzes/{quiz_id}/details")
-async def get_quiz_details(quiz_id: str) -> QuizDetails:
+async def get_quiz_details(quiz_id: str, db: Session = Depends(get_db)) -> QuizDetails:
     """Get detailed information about a completed quiz"""
-    return QuizService.get_quiz_details(quiz_id)
-
+    return QuizService.get_quiz_details(quiz_id, db)
 
 @router.get("/records")
-async def get_records() -> List[QuizRecord]:
+async def get_records(db: Session = Depends(get_db)) -> List[QuizRecord]:
     """Get all quiz records"""
-    return QuizService.get_quiz_records()
+    records = QuizService.get_quiz_records(db)  # Fetch quiz records from the service
+    if not records:
+        raise HTTPException(status_code=404, detail="No quiz records found")
+    return records
